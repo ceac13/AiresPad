@@ -198,7 +198,7 @@ void sendMidi(byte MESSAGE, byte PITCH, byte VELOCITY) {
 
 int calculateVelocity(int value, int pin) {
   // Teste
-  int minimo = 50;
+  int minimo = 80;
   double newValue = value - threshold[pin];
   double dthreshold = threshold[pin];
   double taxa = 127 / (1023 - dthreshold);
