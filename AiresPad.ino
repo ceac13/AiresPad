@@ -1,22 +1,23 @@
 #define  midichannel 1;                              // MIDI channel from 0 to 15 (+1 in "real world")
 
-char pinAssignments[9] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8'};
-byte padNote[9] =       { 49 , 42 , 51 , 38 , 47 , 45 , 36 , 56, 43 }; // MIDI notes from 0 to 127 (Mid C = 60)
-bool padActive[9] =     {true, true, true, true, true, true, true, true, true};
-int threshold[9] =      {300, 300, 300, 300, 300, 300, 300, 300, 300}; // Minimum value to get trigger
-int scanTime =          5; // Time hearing the pad to decide the correct value
-float retrigger =       0.5; // New trigger only value is greater than <<retrigger>> * last value
+char pinAssignments[10] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9'};
+byte padNote[10] =       { 49 , 42 , 51 , 38 , 45 , 47 , 36 , 56, 43, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
+bool padActive[10] =     {true, true, true, true, true, true, true, true, true, true};
+int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 400}; // Minimum value to get trigger
+int scanTime =          10; // Time hearing the pad to decide the correct value
+float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
 int maskTime =          40; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
-int crossTalk =         1; // Number of cycles where cannot have more than one trigger. Highest first
+long crossTalk =         5; // Number of milliseconds where cannot have more than one trigger. Highest first
 
-int numberOfPads = 9;
+int numberOfPads = 10;
 int sizeOfCache = 32;
-int padValues[9][32];
+int padValues[10][32];
 
-int lastTrigger[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; // Zero when bigger than maskTime
-int maxValues[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-bool shouldTrigger[9] = {false, false, false, false, false, false, false, false, false};
-bool triggered[9] = {false, false, false, false, false, false, false, false, false};
+int lastTrigger[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Zero when bigger than maskTime
+int maxValues[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+bool shouldTrigger[10] = {false, false, false, false, false, false, false, false, false, false};
+long startMillis[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+bool triggered[10] = {false, false, false, false, false, false, false, false, false, false};
 
 byte status1;
   
@@ -46,14 +47,14 @@ void loop() {
   // Para os em shouldTrigger analisa o retrigger e remove os que cairem no filtro
   removeRetriggers();
 
-  // Crosstalk....
-  removeCrossTalk(); // Não está fazendo nada por enquanto
-
   // Adiciona os valores dos em shouldTrigger no maxValues
   addMaxValues();
   
   // Incrementa o lastTrigger dos com valores maior que zero no maxValues
   countLastTrigger();
+
+  // Crosstalk....
+  //removeCrossTalk(); 
 
   // Se lastTrigger é > maskTime envia sinal de encerramento do midi e zera lastTrigger e maxValues
   // Se lastTrigger é >= que scanTime e maxValues > 0 envia midi
@@ -89,8 +90,25 @@ void addValue(int pin) {
 // Adiciona ao shouldTrigger todos os que ultimo valor é maior que o threshold e lastTrigger é 0 (maior que mask time)
 void analyzeThreshold(int pin, int value) {
   if (lastTrigger[pin] == 0 && value >= threshold[pin]) {
-    shouldTrigger[pin] = true;
+    long milliseconds = millis();
+    if (!isCrossTalk(milliseconds)) {
+      //Serial.println("--------");
+      //Serial.println(pin);
+      //Serial.println(value);
+      //Serial.println(milliseconds);
+      shouldTrigger[pin] = true;
+      startMillis[pin] = millis();
+    }
   }
+}
+
+boolean isCrossTalk(long milliseconds) {
+  for (int i = 1; i < numberOfPads; i++) {
+    if (fabs(milliseconds - startMillis[i]) < crossTalk) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void updateMaxValue(int pin, int value) {
@@ -104,6 +122,7 @@ void removeRetriggers() {
     if (shouldTrigger[i]) {
       if (getAvg(i) > retrigger * padValues[i][numberOfPads - 1]) {
         shouldTrigger[i] = false;
+        startMillis[i] = 0;
       }
     }
   }
@@ -120,7 +139,38 @@ int getAvg(int pin) {
 
   return avg/items;
 }
+/*
+void removeCrossTalk() {
+  int maxValue = 0;
+  int maxx[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+  boolean toRemove = false;
+  for (int i = 0; i < numberOfPads; i++) {
+    if (lastTrigger[i] > (scanTime - crossTalk)) {
+      maxx[i] = maxValues[i];
+      if (maxValues[i] > maxValue) {
+        maxValue = maxValues[i];
+      }
+    }
+    
+    if (lastTrigger[i] > scanTime) {
+      toRemove = true;
+    }
+  }
 
+  if (toRemove) {
+    for (int i = 0; i < numberOfPads; i++) {
+      if (maxx[i] > 0 && maxx[i] < maxValue) {
+        lastTrigger[i] = 0;
+        maxValues[i] = 0;
+        triggered[i] = false;
+        shouldTrigger[i] = false;
+        startMillis[i] = 0;
+      }
+    }
+  }
+}*/
+
+/*
 void removeCrossTalk() { // Não está influenciando
   int lastHits[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   int initial = sizeOfCache - crossTalk - 1;
@@ -153,7 +203,7 @@ void removeCrossTalk() { // Não está influenciando
       }
     }
   }
-}
+}*/
 
 void addMaxValues() {
   for (int i = 0; i < numberOfPads; i++) {
@@ -180,10 +230,14 @@ void triggerMidi() {
       lastTrigger[i] = 0;
       maxValues[i] = 0;
       triggered[i] = false;
+      startMillis[i] = 0;
     } 
     else if (lastTrigger[i] >= scanTime && maxValues[i] > 0 && !triggered[i]) {
       triggered[i] = true;
       int velocity = calculateVelocity(maxValues[i], i);
+      //Serial.println(maxValues[i]);
+      //Serial.println(i);
+      //Serial.println("----------------");
       sendMidi(144,padNote[i],velocity);
     }
   }
@@ -198,7 +252,7 @@ void sendMidi(byte MESSAGE, byte PITCH, byte VELOCITY) {
 
 int calculateVelocity(int value, int pin) {
   // Teste
-  int minimo = 80;
+  int minimo = 50;
   double newValue = value - threshold[pin];
   double dthreshold = threshold[pin];
   double taxa = 127 / (1023 - dthreshold);
@@ -214,7 +268,6 @@ int calculateVelocity(int value, int pin) {
     return 127;
   }
   return velocity;
-  //return (value/9) + 13;
 }
 
 /*
