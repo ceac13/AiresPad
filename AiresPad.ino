@@ -1,17 +1,35 @@
 #define  midichannel 1;                              // MIDI channel from 0 to 15 (+1 in "real world")
 
+struct Hit {
+  int value;
+  long milliseconds;
+
+  Hit() {
+    value = 0;
+    milliseconds = 0;
+  }
+
+  Hit(int value_, long milliseconds_) {
+    value = value;
+    milliseconds = milliseconds;
+  }
+};
+
 char pinAssignments[10] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9'};
-byte padNote[10] =       { 49 , 42 , 51 , 38 , 45 , 47 , 36 , 56, 43, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
+byte padNote[10] =       { 44 , 42 , 51 , 49 , 45 , 47 , 36 , 56, 43, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[10] =     {true, true, true, true, true, true, true, true, true, true};
-int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 400}; // Minimum value to get trigger
-int scanTime =          10; // Time hearing the pad to decide the correct value
+bool hihat[10] =         {false, false, false, false, false, false, false, false, false, false};
+int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 40}; // Minimum value to get trigger
+int scanTime =          5; // Time hearing the pad to decide the correct value
 float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
-int maskTime =          40; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
-long crossTalk =         5; // Number of milliseconds where cannot have more than one trigger. Highest first
+int maskTime =          10; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+long crossTalk =         4; // Number of milliseconds where cannot have more than one trigger. Highest first
+float gain =            1.0; // multiplier to apply in the analog pin values
 
 int numberOfPads = 10;
-int sizeOfCache = 32;
-int padValues[10][32];
+int sizeOfCache = 16;
+//int padValues[10][16];
+Hit padHits[10][16];
 
 int lastTrigger[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Zero when bigger than maskTime
 int maxValues[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -20,13 +38,15 @@ long startMillis[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 bool triggered[10] = {false, false, false, false, false, false, false, false, false, false};
 
 byte status1;
-  
+
+long lastCycle = 0;
 void setup() {
   Serial.begin(57600);   
   
   for (int i = 0; i < numberOfPads; i++) {
     for (int j = 0; j < sizeOfCache; j++) {
-      padValues[i][j] = 0;
+      //padValues[i][j] = 0;
+      padHits[i][j] = Hit();
     }
   }
 }
@@ -71,20 +91,56 @@ void cleanShouldTriggerArray() {
 void updateValuesArray() {
   for (int i = 0; i < numberOfPads; i++) {
     if (padActive[i]) {
-      addValue(i);
+      if (hihat[i]) {
+        addValueHihat(i);
+      } else {
+        addValue(i);
+      }
     }
+  }
+}
+
+void putValueInTheEnd(int pin, int value, long milliseconds) {
+  for (int i = 1; i < sizeOfCache; i++) {
+      padHits[pin][i-1].value = padHits[pin][i].value;
+      padHits[pin][i-1].milliseconds = padHits[pin][i].milliseconds;
+    }
+    padHits[pin][sizeOfCache-1].value = value;
+    padHits[pin][sizeOfCache-1].milliseconds = milliseconds;
+}
+
+void addValueHihat(int pin) {
+  int margin = 1;
+  int value = analogRead(pin);
+  int velocit = value / 8;
+  if (velocit > 127) velocit = 127;
+
+  int previousValue = padHits[pin][sizeOfCache-1].value;
+  int previousVelocit = previousValue / 8;
+  if (previousVelocit > 127) previousVelocit = 127;
+  
+  
+  if (fabs(previousVelocit - velocit) > margin) {
+    // send midi
+    
+    putValueInTheEnd(pin, value, millis());
+    
+    //Serial.println(velocit);
+  
+    sendMidi(144, padNote[pin], velocit);
+    sendMidi(144, padNote[pin], 0);
   }
 }
 
 void addValue(int pin) {
   int value = analogRead(pin);
-  for (int i = 1; i < numberOfPads; i++) {
-    padValues[pin][i-1] = padValues[pin][i];
+  value = gain * value;
+  if (value > 0) {
+    putValueInTheEnd(pin, value, millis());
+  
+    analyzeThreshold(pin, value);
+    updateMaxValue(pin, value);
   }
-  padValues[pin][numberOfPads - 1] = value;
-
-  analyzeThreshold(pin, value);
-  updateMaxValue(pin, value);
 }
 
 // Adiciona ao shouldTrigger todos os que ultimo valor é maior que o threshold e lastTrigger é 0 (maior que mask time)
@@ -120,7 +176,7 @@ void updateMaxValue(int pin, int value) {
 void removeRetriggers() {
   for (int i = 0; i < numberOfPads; i++) {
     if (shouldTrigger[i]) {
-      if (getAvg(i) > retrigger * padValues[i][numberOfPads - 1]) {
+      if (getAvg(i) > retrigger * padHits[i][sizeOfCache - 1].value) {
         shouldTrigger[i] = false;
         startMillis[i] = 0;
       }
@@ -134,7 +190,8 @@ int getAvg(int pin) {
   int avg = 0;
   
   for (int i = initial; i < sizeOfCache - 1; i++) {
-    avg = avg + padValues[pin][i];
+    //avg = avg + padValues[pin][i];
+    avg = avg + padHits[pin][i].value;
   }
 
   return avg/items;
@@ -207,8 +264,12 @@ void removeCrossTalk() { // Não está influenciando
 
 void addMaxValues() {
   for (int i = 0; i < numberOfPads; i++) {
+    
     if (shouldTrigger[i]) {
-      maxValues[i] = padValues[i][numberOfPads - 1];
+      //maxValues[i] = padValues[i][numberOfPads - 1];
+      //maxValues[i] = padHits[i][numberOfPads - 1].value;
+      maxValues[i] = padHits[i][sizeOfCache - 1].value;
+      
     }
   }
 }
@@ -226,7 +287,7 @@ void countLastTrigger() {
 void triggerMidi() {
   for (int i = 0; i < numberOfPads; i++) {
     if (lastTrigger[i] > maskTime) {
-      sendMidi(144,padNote[i],0); // Send end midi
+      //sendMidi(144,padNote[i],0); // Send end midi
       lastTrigger[i] = 0;
       maxValues[i] = 0;
       triggered[i] = false;
@@ -239,6 +300,7 @@ void triggerMidi() {
       //Serial.println(i);
       //Serial.println("----------------");
       sendMidi(144,padNote[i],velocity);
+      sendMidi(144,padNote[i],0);
     }
   }
 }
@@ -252,10 +314,11 @@ void sendMidi(byte MESSAGE, byte PITCH, byte VELOCITY) {
 
 int calculateVelocity(int value, int pin) {
   // Teste
-  int minimo = 50;
+  int minimo = 70;
   double newValue = value - threshold[pin];
   double dthreshold = threshold[pin];
   double taxa = 127 / (1023 - dthreshold);
+  //double taxa = 127 / (700 - dthreshold);
   double temp = taxa * newValue;
   int velocity = int(temp);
   if (velocity == 0) {
