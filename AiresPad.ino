@@ -16,7 +16,7 @@ struct Hit {
 };
 
 char pinAssignments[10] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9'};
-byte padNote[10] =       { 44 , 42 , 51 , 49 , 45 , 47 , 36 , 56, 43, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
+byte padNote[10] =       { 49 , 51 , 53 , 42 , 48 , 47 , 41 , 38, 54, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[10] =     {true, true, true, true, true, true, true, true, true, true};
 bool hihat[10] =         {false, false, false, false, false, false, false, false, false, false};
 int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 40}; // Minimum value to get trigger
