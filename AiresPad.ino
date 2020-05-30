@@ -16,15 +16,17 @@ struct Hit {
 };
 
 char pinAssignments[10] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9'};
-byte padNote[10] =       { 49 , 51 , 53 , 42 , 48 , 47 , 41 , 38, 54, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
+byte padNote[10] =       { 49 , 51 , 53 , 42 , 48 , 47 , 38 , 41, 54, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[10] =     {true, true, true, true, true, true, true, true, true, true};
 bool hihat[10] =         {false, false, false, false, false, false, false, false, false, false};
-int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 40}; // Minimum value to get trigger
+int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 60}; // Minimum value to get trigger
+float gain[10] =      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 10}; // multiplier to apply in the analog pin values
+int maskTime[10] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 70}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 int scanTime =          5; // Time hearing the pad to decide the correct value
 float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
-int maskTime =          10; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
-long crossTalk =         4; // Number of milliseconds where cannot have more than one trigger. Highest first
-float gain =            1.0; // multiplier to apply in the analog pin values
+//int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+long crossTalk =         1; // Number of milliseconds where cannot have more than one trigger. Highest first
+//float gain =            1.0; // multiplier to apply in the analog pin values
 
 int numberOfPads = 10;
 int sizeOfCache = 16;
@@ -134,7 +136,7 @@ void addValueHihat(int pin) {
 
 void addValue(int pin) {
   int value = analogRead(pin);
-  value = gain * value;
+  value = gain[pin] * value;
   if (value > 0) {
     putValueInTheEnd(pin, value, millis());
   
@@ -286,7 +288,7 @@ void countLastTrigger() {
 // Se lastTrigger é >= que scanTime e maxValues > 0 envia midi
 void triggerMidi() {
   for (int i = 0; i < numberOfPads; i++) {
-    if (lastTrigger[i] > maskTime) {
+    if (lastTrigger[i] > maskTime[i]) {
       //sendMidi(144,padNote[i],0); // Send end midi
       lastTrigger[i] = 0;
       maxValues[i] = 0;
@@ -314,7 +316,7 @@ void sendMidi(byte MESSAGE, byte PITCH, byte VELOCITY) {
 
 int calculateVelocity(int value, int pin) {
   // Teste
-  int minimo = 70;
+  int minimo = 50;
   double newValue = value - threshold[pin];
   double dthreshold = threshold[pin];
   double taxa = 127 / (1023 - dthreshold);
