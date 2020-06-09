@@ -19,9 +19,9 @@ char pinAssignments[10] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9'};
 byte padNote[10] =       { 49 , 51 , 53 , 42 , 48 , 47 , 38 , 41, 54, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[10] =     {true, true, true, true, true, true, true, true, true, true};
 bool hihat[10] =         {false, false, false, false, false, false, false, false, false, false};
-int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 60}; // Minimum value to get trigger
-float gain[10] =      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 10}; // multiplier to apply in the analog pin values
-int maskTime[10] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 70}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 50}; // Minimum value to get trigger
+float gain[10] =      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}; // multiplier to apply in the analog pin values
+int maskTime[10] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 100}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 int scanTime =          5; // Time hearing the pad to decide the correct value
 float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
 //int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
