@@ -289,7 +289,7 @@ void countLastTrigger() {
 void triggerMidi() {
   for (int i = 0; i < numberOfPads; i++) {
     if (lastTrigger[i] > maskTime[i]) {
-      //sendMidi(144,padNote[i],0); // Send end midi
+      sendMidi(144,padNote[i],0); // Send end midi
       lastTrigger[i] = 0;
       maxValues[i] = 0;
       triggered[i] = false;
@@ -302,7 +302,7 @@ void triggerMidi() {
       //Serial.println(i);
       //Serial.println("----------------");
       sendMidi(144,padNote[i],velocity);
-      sendMidi(144,padNote[i],0);
+      //sendMidi(144,padNote[i],0);
     }
   }
 }
