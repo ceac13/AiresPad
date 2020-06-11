@@ -16,10 +16,10 @@ struct Hit {
 };
 
 char pinAssignments[10] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9'};
-byte padNote[10] =       { 49 , 51 , 53 , 42 , 48 , 47 , 38 , 41, 54, 36}; // MIDI notes from 0 to 127 (Mid C = 60)
+byte padNote[10] =       { 49 , 53 , 51 , 48 , 43 , 25 , 37 , 38 , 42 , 36 }; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[10] =     {true, true, true, true, true, true, true, true, true, true};
 bool hihat[10] =         {false, false, false, false, false, false, false, false, false, false};
-int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 400, 400, 50}; // Minimum value to get trigger
+int threshold[10] =      {400, 400, 400, 400, 400, 400, 400, 250, 400, 50}; // Minimum value to get trigger
 float gain[10] =      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}; // multiplier to apply in the analog pin values
 int maskTime[10] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 100}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 int scanTime =          5; // Time hearing the pad to decide the correct value
@@ -316,7 +316,7 @@ void sendMidi(byte MESSAGE, byte PITCH, byte VELOCITY) {
 
 int calculateVelocity(int value, int pin) {
   // Teste
-  int minimo = 50;
+  int minimo = 70;
   double newValue = value - threshold[pin];
   double dthreshold = threshold[pin];
   double taxa = 127 / (1023 - dthreshold);
