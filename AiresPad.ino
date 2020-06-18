@@ -15,29 +15,29 @@ struct Hit {
   }
 };
 
-char pinAssignments[10] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9'};
-byte padNote[10] =       { 49 , 53 , 51 , 48 , 43 , 25 , 37 , 38 , 42 , 36 }; // MIDI notes from 0 to 127 (Mid C = 60)
-bool padActive[10] =     {true, true, true, true, true, true, true, true, true, true};
-bool hihat[10] =         {false, false, false, false, false, false, false, false, false, false};
-int threshold[10] =      {400, 400, 400, 450, 450, 400, 400, 200, 400, 40}; // Minimum value to get trigger
-float gain[10] =      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}; // multiplier to apply in the analog pin values
-int maskTime[10] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 100}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+char pinAssignments[11] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A10'};
+byte padNote[11] =       { 49 , 53 , 51 , 48 , 43 , 25 , 37 , 38 , 42 , 36  , 4 }; // MIDI notes from 0 to 127 (Mid C = 60)
+bool padActive[11] =     {true, true, true, true, true, true, true, true, true, true, true};
+bool hihat[11] =         {false, false, false, false, false, false, false, false, false, false, true};
+int threshold[11] =      {400, 400, 400, 450, 450, 400, 400, 200, 400, 40, 10}; // Minimum value to get trigger
+float gain[11] =      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}; // multiplier to apply in the analog pin values
+int maskTime[11] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 100, 1}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 int scanTime =          5; // Time hearing the pad to decide the correct value
 float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
 //int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 long crossTalk =         1; // Number of milliseconds where cannot have more than one trigger. Highest first
 //float gain =            1.0; // multiplier to apply in the analog pin values
 
-int numberOfPads = 10;
+int numberOfPads = 11;
 int sizeOfCache = 16;
 //int padValues[10][16];
-Hit padHits[10][16];
+Hit padHits[11][16];
 
-int lastTrigger[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Zero when bigger than maskTime
-int maxValues[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-bool shouldTrigger[10] = {false, false, false, false, false, false, false, false, false, false};
-long startMillis[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-bool triggered[10] = {false, false, false, false, false, false, false, false, false, false};
+int lastTrigger[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Zero when bigger than maskTime
+int maxValues[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+bool shouldTrigger[11] = {false, false, false, false, false, false, false, false, false, false, false};
+long startMillis[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+bool triggered[11] = {false, false, false, false, false, false, false, false, false, false, false};
 
 byte status1;
 
@@ -54,6 +54,8 @@ void setup() {
 }
 
 void loop() {
+  //Serial.println(analogRead(0));
+  //return ;
   // put your main code here, to run repeatedly:
 
   // Limpa shouldTrigger
@@ -112,10 +114,12 @@ void putValueInTheEnd(int pin, int value, long milliseconds) {
 }
 
 void addValueHihat(int pin) {
-  int margin = 1;
+  int margin = 10;
   int value = analogRead(pin);
-  int velocit = value / 8;
-  if (velocit > 127) velocit = 127;
+  int velocit = 0;
+  //int velocit = value / 8;
+  //if (velocit > 127) velocit = 127;
+  if (value > 900) velocit = 127;
 
   int previousValue = padHits[pin][sizeOfCache-1].value;
   int previousVelocit = previousValue / 8;
@@ -130,7 +134,6 @@ void addValueHihat(int pin) {
     //Serial.println(velocit);
   
     sendMidi(144, padNote[pin], velocit);
-    sendMidi(144, padNote[pin], 0);
   }
 }
 
