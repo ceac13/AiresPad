@@ -16,7 +16,7 @@ struct Hit {
 };
 
 char pinAssignments[11] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A10'};
-byte padNote[11] =       { 49 , 53 , 51 , 48 , 43 , 25 , 37 , 38 , 42 , 36  , 4 }; // MIDI notes from 0 to 127 (Mid C = 60)
+byte padNote[11] =       { 49 , 53 , 51 , 48 , 43 , 25 , 37 , 38 , 18 , 36  , 4 }; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[11] =     {true, true, true, true, true, true, true, true, true, true, true};
 bool hihat[11] =         {false, false, false, false, false, false, false, false, false, false, true};
 int threshold[11] =      {400, 400, 400, 450, 450, 400, 400, 200, 400, 40, 10}; // Minimum value to get trigger
@@ -116,10 +116,10 @@ void putValueInTheEnd(int pin, int value, long milliseconds) {
 void addValueHihat(int pin) {
   int margin = 10;
   int value = analogRead(pin);
-  int velocit = 0;
+  int velocit = 127;
   //int velocit = value / 8;
   //if (velocit > 127) velocit = 127;
-  if (value > 900) velocit = 127;
+  if (value > 900) velocit = 0;
 
   int previousValue = padHits[pin][sizeOfCache-1].value;
   int previousVelocit = previousValue / 8;
@@ -129,11 +129,11 @@ void addValueHihat(int pin) {
   if (fabs(previousVelocit - velocit) > margin) {
     // send midi
     
-    putValueInTheEnd(pin, value, millis());
+    putValueInTheEnd(pin, velocit*8, millis());
     
     //Serial.println(velocit);
   
-    sendMidi(144, padNote[pin], velocit);
+    sendMidi(176, padNote[pin], velocit);
   }
 }
 
