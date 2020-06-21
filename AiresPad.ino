@@ -16,16 +16,17 @@ struct Hit {
 };
 
 char pinAssignments[11] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A10'};
-byte padNote[11] =       { 49 , 53 , 51 , 48 , 43 , 25 , 37 , 38 , 18 , 36  , 4 }; // MIDI notes from 0 to 127 (Mid C = 60)
+byte padNote[11] =       { 49 , 53 , 51 , 48 , 43 , 1 , 37 , 38 , 18 , 36  , 4 }; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[11] =     {true, true, true, true, true, true, true, true, true, true, true};
 bool hihat[11] =         {false, false, false, false, false, false, false, false, false, false, true};
-int threshold[11] =      {400, 400, 400, 450, 450, 400, 400, 200, 400, 40, 10}; // Minimum value to get trigger
+int threshold[11] =      {360, 360, 360, 500, 500, 500, 360, 240, 300, 40, 10}; // Minimum value to get trigger
 float gain[11] =      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}; // multiplier to apply in the analog pin values
 int maskTime[11] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 100, 1}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 int scanTime =          5; // Time hearing the pad to decide the correct value
 float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
 //int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
-long crossTalk =         1; // Number of milliseconds where cannot have more than one trigger. Highest first
+long crossTalk =         8; // Number of milliseconds where cannot have more than one trigger. Highest first
+double crosstalkRatio = 2.0; // Less than crosstalkRatio * threshold will be removed 
 //float gain =            1.0; // multiplier to apply in the analog pin values
 
 int numberOfPads = 11;
@@ -39,9 +40,23 @@ bool shouldTrigger[11] = {false, false, false, false, false, false, false, false
 long startMillis[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 bool triggered[11] = {false, false, false, false, false, false, false, false, false, false, false};
 
+int padNeighbours[9][9] = {
+  // A0     A1     A2     A3    A4     A5      A6     A7     A8 
+  { true,  true, false,  true,  true, false, false, false, false},  // A0
+  { true,  true,  true,  true,  true,  true, false, false, false},  // A1
+  {false,  true,  true, false,  true,  true, false, false, false},  // A2
+  { true,  true, false,  true,  true, false,  true,  true, false},  // A3
+  { true,  true,  true,  true,  true,  true,  true,  true,  true},  // A4
+  {false,  true,  true, false,  true,  true, false,  true,  true},  // A5
+  {false, false, false,  true,  true, false,  true,  true, false},  // A6
+  {false, false, false,  true,  true,  true,  true,  true,  true},  // A7
+  {false, false, false, false,  true,  true, false,  true,  true}   // A8
+};
+
 byte status1;
 
 long lastCycle = 0;
+
 void setup() {
   Serial.begin(57600);   
   
@@ -54,8 +69,28 @@ void setup() {
 }
 
 void loop() {
-  //Serial.println(analogRead(0));
-  //return ;
+  /*
+  Serial.print("pad0;");
+  Serial.print(analogRead(0));
+  Serial.print(";pad1;");
+  Serial.print(analogRead(1));
+  Serial.print(";pad2;");
+  Serial.print(analogRead(2));
+  Serial.print(";pad3;");
+  Serial.print(analogRead(3));
+  Serial.print(";pad4;");
+  Serial.print(analogRead(4));
+  Serial.print(";pad5;");
+  Serial.print(analogRead(5));
+  Serial.print(";pad6;");
+  Serial.print(analogRead(6));
+  Serial.print(";pad7;");
+  Serial.print(analogRead(7));
+  Serial.print(";pad8;");
+  Serial.print(analogRead(8));
+  Serial.println(";");
+  
+  return ;*/
   // put your main code here, to run repeatedly:
 
   // Limpa shouldTrigger
@@ -78,7 +113,7 @@ void loop() {
   countLastTrigger();
 
   // Crosstalk....
-  //removeCrossTalk(); 
+  removeCrosstalk(); 
 
   // Se lastTrigger é > maskTime envia sinal de encerramento do midi e zera lastTrigger e maxValues
   // Se lastTrigger é >= que scanTime e maxValues > 0 envia midi
@@ -117,8 +152,7 @@ void addValueHihat(int pin) {
   int margin = 10;
   int value = analogRead(pin);
   int velocit = 127;
-  //int velocit = value / 8;
-  //if (velocit > 127) velocit = 127;
+  
   if (value > 900) velocit = 0;
 
   int previousValue = padHits[pin][sizeOfCache-1].value;
@@ -130,8 +164,6 @@ void addValueHihat(int pin) {
     // send midi
     
     putValueInTheEnd(pin, velocit*8, millis());
-    
-    //Serial.println(velocit);
   
     sendMidi(176, padNote[pin], velocit);
   }
@@ -152,24 +184,9 @@ void addValue(int pin) {
 void analyzeThreshold(int pin, int value) {
   if (lastTrigger[pin] == 0 && value >= threshold[pin]) {
     long milliseconds = millis();
-    if (!isCrossTalk(milliseconds)) {
-      //Serial.println("--------");
-      //Serial.println(pin);
-      //Serial.println(value);
-      //Serial.println(milliseconds);
-      shouldTrigger[pin] = true;
-      startMillis[pin] = millis();
-    }
+    shouldTrigger[pin] = true;
+    startMillis[pin] = millis();
   }
-}
-
-boolean isCrossTalk(long milliseconds) {
-  for (int i = 1; i < numberOfPads; i++) {
-    if (fabs(milliseconds - startMillis[i]) < crossTalk) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void updateMaxValue(int pin, int value) {
@@ -195,77 +212,11 @@ int getAvg(int pin) {
   int avg = 0;
   
   for (int i = initial; i < sizeOfCache - 1; i++) {
-    //avg = avg + padValues[pin][i];
     avg = avg + padHits[pin][i].value;
   }
 
   return avg/items;
 }
-/*
-void removeCrossTalk() {
-  int maxValue = 0;
-  int maxx[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-  boolean toRemove = false;
-  for (int i = 0; i < numberOfPads; i++) {
-    if (lastTrigger[i] > (scanTime - crossTalk)) {
-      maxx[i] = maxValues[i];
-      if (maxValues[i] > maxValue) {
-        maxValue = maxValues[i];
-      }
-    }
-    
-    if (lastTrigger[i] > scanTime) {
-      toRemove = true;
-    }
-  }
-
-  if (toRemove) {
-    for (int i = 0; i < numberOfPads; i++) {
-      if (maxx[i] > 0 && maxx[i] < maxValue) {
-        lastTrigger[i] = 0;
-        maxValues[i] = 0;
-        triggered[i] = false;
-        shouldTrigger[i] = false;
-        startMillis[i] = 0;
-      }
-    }
-  }
-}*/
-
-/*
-void removeCrossTalk() { // Não está influenciando
-  int lastHits[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  int initial = sizeOfCache - crossTalk - 1;
-  for (int i = 0; i < numberOfPads; i++) {
-    int maxi = 0;
-    for (int j = sizeOfCache - 1; j >= initial; j--) {
-      if (padValues[i][j] == 0) {
-        lastHits[i] = maxi;
-        j = -1;
-      } else {
-        maxi = max(maxi, padValues[i][j]);
-      }
-    }
-  }
-  
-  int hitPad = -1;
-  for (int i = 0; i < numberOfPads; i++) {
-    if (lastHits[i] > 0) {
-      if (hitPad == -1) {
-        hitPad = i;
-      } else {
-        int valueOld = lastHits[hitPad];
-        int valueNew = lastHits[i];
-        if (valueNew > valueOld) {
-          shouldTrigger[hitPad] = false;
-          hitPad = i;
-        } else {
-          shouldTrigger[i] = false;
-        }
-      }
-    }
-  }
-}*/
 
 void addMaxValues() {
   for (int i = 0; i < numberOfPads; i++) {
@@ -299,6 +250,7 @@ void triggerMidi() {
       startMillis[i] = 0;
     } 
     else if (lastTrigger[i] >= scanTime && maxValues[i] > 0 && !triggered[i]) {
+      
       triggered[i] = true;
       int velocity = calculateVelocity(maxValues[i], i);
       //Serial.println(maxValues[i]);
@@ -306,6 +258,55 @@ void triggerMidi() {
       //Serial.println("----------------");
       sendMidi(144,padNote[i],velocity);
       //sendMidi(144,padNote[i],0);
+    
+    }
+  }
+}
+
+void removeCrosstalk() {
+  // It's specific for 9 pads
+  for (int i = 0; i < 9; i++) {
+    
+    if (maxValues[i] > 0) {
+      //Serial.println(startMillis[i]);
+      int value = maxValues[i];
+      long smillis = startMillis[i];
+      double p =  crosstalkRatio * threshold[i];
+      
+      for (int j = 0; j < 9; j++) {
+        
+        if (j != i && padNeighbours[i][j] && maxValues[j] > 0) {
+          
+          int valueJ = maxValues[j];
+          long startMillisJ = startMillis[j];
+          
+          long distance = fabs(smillis - startMillisJ);
+          
+          if (value < valueJ && p > value && distance <= crossTalk) {
+            /*
+            Serial.println("__________________");
+            Serial.println("Distance: ");
+            Serial.println(distance);
+            Serial.println("Value i: ");
+            Serial.println(value);
+            Serial.println("P: ");
+            Serial.println(p);
+            Serial.println("Velue J: ");
+            Serial.println(valueJ);
+            
+            Serial.println("Hit removed: ");
+            Serial.println(i);*/
+            
+            // remove hit
+            
+            lastTrigger[i] = 0;
+            maxValues[i] = 0;
+            triggered[i] = false;
+            startMillis[i] = 0;
+          }
+          
+        }
+      }
     }
   }
 }
@@ -318,7 +319,6 @@ void sendMidi(byte MESSAGE, byte PITCH, byte VELOCITY) {
 }
 
 int calculateVelocity(int value, int pin) {
-  // Teste
   int minimo = 70;
   double newValue = value - threshold[pin];
   double dthreshold = threshold[pin];
