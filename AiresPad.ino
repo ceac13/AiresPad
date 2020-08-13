@@ -15,12 +15,15 @@ struct Hit {
   }
 };
 
+int padS = 100;
+int padG = 2.0;
+
 char pinAssignments[11] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A10'};
-byte padNote[11] =       { 49 , 53 , 51 , 48 , 43 , 1 , 37 , 38 , 18 , 36  , 4 }; // MIDI notes from 0 to 127 (Mid C = 60)
+byte padNote[11] =       { 4,   49 , 53 , 51 , 48 , 43 ,  1 , 37 , 38 , 18 ,  36  }; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[11] =     {true, true, true, true, true, true, true, true, true, true, true};
-bool hihat[11] =         {false, false, false, false, false, false, false, false, false, false, true};
-int threshold[11] =      {360, 360, 360, 500, 500, 500, 360, 240, 300, 40, 10}; // Minimum value to get trigger
-float gain[11] =      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}; // multiplier to apply in the analog pin values
+bool hihat[11] =         {true, false, false, false, false, false, false, false, false, false, false};
+int threshold[11] =      {10, padS, padS, padS, padS, padS, padS, padS, padS, padS, 60}; // Minimum value to get trigger
+float gain[11] =      {1.0, padG, padG, padG, padG, padG, padG, padG, padG, padG, 1.0}; // multiplier to apply in the analog pin values
 int maskTime[11] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 100, 1}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 int scanTime =          5; // Time hearing the pad to decide the correct value
 float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
@@ -40,17 +43,18 @@ bool shouldTrigger[11] = {false, false, false, false, false, false, false, false
 long startMillis[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 bool triggered[11] = {false, false, false, false, false, false, false, false, false, false, false};
 
-int padNeighbours[9][9] = {
-  // A0     A1     A2     A3    A4     A5      A6     A7     A8 
-  { true,  true, false,  true,  true, false, false, false, false},  // A0
-  { true,  true,  true,  true,  true,  true, false, false, false},  // A1
-  {false,  true,  true, false,  true,  true, false, false, false},  // A2
-  { true,  true, false,  true,  true, false,  true,  true, false},  // A3
-  { true,  true,  true,  true,  true,  true,  true,  true,  true},  // A4
-  {false,  true,  true, false,  true,  true, false,  true,  true},  // A5
-  {false, false, false,  true,  true, false,  true,  true, false},  // A6
-  {false, false, false,  true,  true,  true,  true,  true,  true},  // A7
-  {false, false, false, false,  true,  true, false,  true,  true}   // A8
+int padNeighbours[10][10] = {
+  // A0     A1     A2     A3    A4     A5      A6     A7     A8    A9
+  { false, false, false, false, false, false, false, false, false, false },  // A0
+  { false, true,  true,  false, true,  true,  false, false, false, false },  // A1
+  { false, true,  true,  true,  true,  true,  true,  false, false, false },  // A2
+  { false, false, true,  true,  false, true,  true,  false, false, false },  // A3
+  { false, true,  true,  false, true,  true,  false, true,  true,  false },  // A4
+  { false, true,  true,  true,  true,  true,  true,  true,  true,  true  },  // A5
+  { false, false, true,  true,  false, true,  true,  false, true,  true  },  // A6
+  { false, false, false, false, true,  true,  false, true,  true,  false },  // A7
+  { false, false, false, false, true,  true,  true,  true,  true,  true  },  // A8
+  { false, false, false, false, false, true,  true,  false, true,  true  }   // A9
 };
 
 byte status1;
@@ -171,6 +175,12 @@ void addValueHihat(int pin) {
 
 void addValue(int pin) {
   int value = analogRead(pin);
+  /*if (value > 0) {
+    Serial.print("Pin: ");
+    Serial.print(pin);
+    Serial.print(" v: ");
+    Serial.println(value);
+  }*/
   value = gain[pin] * value;
   if (value > 0) {
     putValueInTheEnd(pin, value, millis());
@@ -253,11 +263,12 @@ void triggerMidi() {
       
       triggered[i] = true;
       int velocity = calculateVelocity(maxValues[i], i);
-      //Serial.println(maxValues[i]);
-      //Serial.println(i);
-      //Serial.println("----------------");
+      /*Serial.println(i);
+      Serial.println(maxValues[i]);
+      Serial.println(velocity);
+      Serial.println("----------------");
+      */
       sendMidi(144,padNote[i],velocity);
-      //sendMidi(144,padNote[i],0);
     
     }
   }
@@ -265,7 +276,7 @@ void triggerMidi() {
 
 void removeCrosstalk() {
   // It's specific for 9 pads
-  for (int i = 0; i < 9; i++) {
+  for (int i = 1; i < 10; i++) {
     
     if (maxValues[i] > 0) {
       //Serial.println(startMillis[i]);
@@ -273,7 +284,7 @@ void removeCrosstalk() {
       long smillis = startMillis[i];
       double p =  crosstalkRatio * threshold[i];
       
-      for (int j = 0; j < 9; j++) {
+      for (int j = 1; j < 10; j++) {
         
         if (j != i && padNeighbours[i][j] && maxValues[j] > 0) {
           
@@ -283,19 +294,6 @@ void removeCrosstalk() {
           long distance = fabs(smillis - startMillisJ);
           
           if (value < valueJ && p > value && distance <= crossTalk) {
-            /*
-            Serial.println("__________________");
-            Serial.println("Distance: ");
-            Serial.println(distance);
-            Serial.println("Value i: ");
-            Serial.println(value);
-            Serial.println("P: ");
-            Serial.println(p);
-            Serial.println("Velue J: ");
-            Serial.println(valueJ);
-            
-            Serial.println("Hit removed: ");
-            Serial.println(i);*/
             
             // remove hit
             
@@ -319,7 +317,7 @@ void sendMidi(byte MESSAGE, byte PITCH, byte VELOCITY) {
 }
 
 int calculateVelocity(int value, int pin) {
-  int minimo = 70;
+  int minimo = 80;
   double newValue = value - threshold[pin];
   double dthreshold = threshold[pin];
   double taxa = 127 / (1023 - dthreshold);
@@ -337,13 +335,17 @@ int calculateVelocity(int value, int pin) {
   }
   return velocity;
 }
-
 /*
+
 int calculateVelocity(int value, int pin) {
   // Exponencial
+  int minimo = 80;
   double lambda = 0.007;
   double maxi = exp(1023 * lambda);
   int velocity = exp(value * lambda)/maxi*127;
 
+  if (velocity < minimo) return minimo;
+  if (velocity > 127) return 127;
+  
   return velocity;
 }*/
