@@ -23,8 +23,8 @@ byte padNote[11] =       { 4,   49 , 53 , 51 , 48 , 43 ,  1 , 37 , 38 , 18 ,  36
 bool padActive[11] =     {true, true, true, true, true, true, true, true, true, true, true};
 bool hihat[11] =         {true, false, false, false, false, false, false, false, false, false, false};
 int threshold[11] =      {10, padS, padS, padS, padS, padS, padS, padS, padS, padS, 60}; // Minimum value to get trigger
-float gain[11] =      {1.0, padG, padG, padG, padG, padG, padG, padG, padG, padG, 1.0}; // multiplier to apply in the analog pin values
-int maskTime[11] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 100, 1}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+float gain[11] =      {1.0, padG, padG, padG, padG, padG, padG, padG, padG, padG, 2.0}; // multiplier to apply in the analog pin values
+int maskTime[11] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 100}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 int scanTime =          5; // Time hearing the pad to decide the correct value
 float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
 //int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
@@ -252,6 +252,7 @@ void countLastTrigger() {
 // Se lastTrigger é >= que scanTime e maxValues > 0 envia midi
 void triggerMidi() {
   for (int i = 0; i < numberOfPads; i++) {
+    
     if (lastTrigger[i] > maskTime[i]) {
       sendMidi(144,padNote[i],0); // Send end midi
       lastTrigger[i] = 0;
@@ -266,8 +267,8 @@ void triggerMidi() {
       /*Serial.println(i);
       Serial.println(maxValues[i]);
       Serial.println(velocity);
-      Serial.println("----------------");
-      */
+      Serial.println("----------------");*/
+      
       sendMidi(144,padNote[i],velocity);
     
     }
