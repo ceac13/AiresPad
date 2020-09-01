@@ -153,24 +153,38 @@ void putValueInTheEnd(int pin, int value, long milliseconds) {
 }
 
 void addValueHihat(int pin) {
-  int margin = 10;
-  int value = analogRead(pin);
-  int velocit = 127;
+  // max 390 ~ 400
+  // min 40
+  long maxx = 360;
+  long minn = 50;
+  int margin = 8;
   
-  if (value > 900) velocit = 0;
-
+  int value = analogRead(pin);
   int previousValue = padHits[pin][sizeOfCache-1].value;
-  int previousVelocit = previousValue / 8;
+  
+  long velocit = ((value - minn))*127 / ((maxx-minn));
+  if (velocit > 118) velocit = 127;
+  if (velocit < 0) velocit = 0;
+  
+  long previousVelocit = (previousValue - minn)*127 / (maxx-minn);
   if (previousVelocit > 127) previousVelocit = 127;
+  if (previousVelocit < 0) previousVelocit = 0;
+
+  
+  //Serial.println(" ---- " );
+  //Serial.println(velocit);
+  //Serial.println(previousVelocit);
   
   
   if (fabs(previousVelocit - velocit) > margin) {
     // send midi
     
-    putValueInTheEnd(pin, velocit*8, millis());
+    putValueInTheEnd(pin, value, millis());
   
-    sendMidi(176, padNote[pin], velocit);
+    sendMidi(176, padNote[pin], (int) velocit);
   }
+  
+  // 
 }
 
 void addValue(int pin) {
