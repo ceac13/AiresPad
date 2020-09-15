@@ -15,16 +15,16 @@ struct Hit {
   }
 };
 
-int padS = 100;
+int padS = 80;
 int padG = 2.0;
 
-char pinAssignments[11] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A10'};
-byte padNote[11] =       { 4,   49 , 53 , 51 , 48 , 43 ,  1 , 37 , 38 , 18 ,  36  }; // MIDI notes from 0 to 127 (Mid C = 60)
-bool padActive[11] =     {true, true, true, true, true, true, true, true, true, true, true};
-bool hihat[11] =         {true, false, false, false, false, false, false, false, false, false, false};
-int threshold[11] =      {10, padS, padS, padS, padS, padS, padS, padS, padS, padS, 60}; // Minimum value to get trigger
-float gain[11] =      {1.0, padG, padG, padG, padG, padG, padG, padG, padG, padG, 2.0}; // multiplier to apply in the analog pin values
-int maskTime[11] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 100}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+char pinAssignments[13] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A10', 'A11', 'A12'};
+byte padNote[13] =       { 4,   49 , 53 , 51 , 48 , 43 ,  1 , 37 , 38 , 18 ,  36  ,   5  ,    6 }; // MIDI notes from 0 to 127 (Mid C = 60)
+bool padActive[13] =     {true, true, true, true, true, true, true, true, true, true, true, true, true};
+bool hihat[13] =         {true, false, false, false, false, false, false, false, false, false, false, false, false};
+int threshold[13] =      {10, padS, padS, padS, padS, padS, padS, padS, padS, padS, 60, 20, 20}; // Minimum value to get trigger
+float gain[13] =      {1.0, padG, padG, padG, padG, padG, padG, padG, padG, padG, 2.0, 2.0, 2.0}; // multiplier to apply in the analog pin values
+int maskTime[13] =      {30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 100, 30, 30}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 int scanTime =          5; // Time hearing the pad to decide the correct value
 float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
 //int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
@@ -32,16 +32,16 @@ long crossTalk =         8; // Number of milliseconds where cannot have more tha
 double crosstalkRatio = 2.0; // Less than crosstalkRatio * threshold will be removed 
 //float gain =            1.0; // multiplier to apply in the analog pin values
 
-int numberOfPads = 11;
+int numberOfPads = 13;
 int sizeOfCache = 16;
 //int padValues[10][16];
-Hit padHits[11][16];
+Hit padHits[13][16];
 
-int lastTrigger[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Zero when bigger than maskTime
-int maxValues[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-bool shouldTrigger[11] = {false, false, false, false, false, false, false, false, false, false, false};
-long startMillis[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-bool triggered[11] = {false, false, false, false, false, false, false, false, false, false, false};
+int lastTrigger[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Zero when bigger than maskTime
+int maxValues[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+bool shouldTrigger[13] = {false, false, false, false, false, false, false, false, false, false, false, false, false};
+long startMillis[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+bool triggered[13] = {false, false, false, false, false, false, false, false, false, false, false, false, false};
 
 int padNeighbours[10][10] = {
   // A0     A1     A2     A3    A4     A5      A6     A7     A8    A9
