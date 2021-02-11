@@ -15,19 +15,19 @@ struct Hit {
   }
 };
 
-int padSMin = 90;
-int padSMax = 90;
-int padG = 2.0;
+int padSMin = 70;
+int padSMax = 70;
+int padG = 1.5;
 
 char pinAssignments[13] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A10', 'A11', 'A12'};
 byte padNote[13] =       { 4,   49 , 53 , 51 , 48 , 43 ,  1 , 37 , 38 , 18 ,  36  ,   5  ,    6 }; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[13] =     {true, true, true, true, true, true, true, true, true, true, true, true, true};
 bool hihat[13] =         {true, false, false, false, false, false, false, false, false, false, false, false, false};
 int threshold[13] =      {10, padSMin, padSMin, padSMin, padSMin, padSMin, padSMin, padSMax, padSMax, padSMax, 60, 20, 20}; // Minimum value to get trigger
-float gain[13] =      {1.0, padG, padG, padG, padG, 1.5, padG, 1.5, 1.5, padG, 2.0, 2.0, 2.0}; // multiplier to apply in the analog pin values
-int maskTime[13] =      {15, 4, 4, 4, 4, 4, 4, 4, 4, 4, 40, 4, 4}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
-int scanTime =          3; // Time hearing the pad to decide the correct value
-float retrigger =       0.6; // New trigger only value is greater than <<retrigger>> * last value
+float gain[13] =      {1.0, padG, padG, padG, padG, 1.5, padG, 1.5, 1.7, padG, 2.0, 2.0, 2.0}; // multiplier to apply in the analog pin values
+int maskTime[13] =      {15, 20, 20, 20, 20, 20, 20, 20, 20, 20, 50, 20, 10}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+int scanTime =          6; // Time hearing the pad to decide the correct value
+float retrigger =       0.7; // New trigger only value is greater than <<retrigger>> * last value
 //int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 long crossTalk =         8; // Number of milliseconds where cannot have more than one trigger. Highest first
 double crosstalkRatio = 3.2; // Less than crosstalkRatio * threshold will be removed 
