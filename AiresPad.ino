@@ -23,10 +23,10 @@ char pinAssignments[13] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A1
 byte padNote[13] =       { 4,   49 , 53 , 51 , 48 , 43 ,  1 , 37 , 38 , 18 ,  36  ,   5  ,    6 }; // MIDI notes from 0 to 127 (Mid C = 60)
 bool padActive[13] =     {true, true, true, true, true, true, true, true, true, true, true, true, true};
 bool hihat[13] =         {true, false, false, false, false, false, false, false, false, false, false, false, false};
-int threshold[13] =      {10, padSMin, padSMin, padSMin, padSMin, padSMin, padSMin, padSMax, padSMax, padSMax, 60, 20, 20}; // Minimum value to get trigger
-float gain[13] =      {1.0, padG, padG, padG, padG, 1.5, padG, 1.5, 1.7, padG, 2.0, 2.0, 2.0}; // multiplier to apply in the analog pin values
+int threshold[13] =      {10, padSMin, padSMin, padSMin, padSMin, padSMin, padSMin, padSMax, 40, padSMax, 60, 20, 20}; // Minimum value to get trigger
+float gain[13] =      {1.0, padG, padG, padG, padG, 1.5, padG, 1.5, 1.2, padG, 1.2, 2.0, 2.0}; // multiplier to apply in the analog pin values
 int maskTime[13] =      {15, 20, 20, 20, 20, 20, 20, 20, 20, 20, 50, 20, 10}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
-int scanTime =          6; // Time hearing the pad to decide the correct value
+int scanTime =          10; // Time hearing the pad to decide the correct value
 float retrigger =       0.7; // New trigger only value is greater than <<retrigger>> * last value
 //int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
 long crossTalk =         8; // Number of milliseconds where cannot have more than one trigger. Highest first
@@ -331,7 +331,7 @@ void sendMidi(byte MESSAGE, byte PITCH, byte VELOCITY) {
   Serial.write(PITCH);
   Serial.write(VELOCITY);
 }
-
+/*
 int calculateVelocity(int value, int pin) {
   int minimo = 70;
   double newValue = value - threshold[pin];
@@ -350,9 +350,21 @@ int calculateVelocity(int value, int pin) {
     return 127;
   }
   return velocity;
-}
-/*
+}*/
 
+int calculateVelocity(int value, int pin) {
+  int minimo = 70;
+  int velocity = log(value) * 18.3;
+  if (velocity < minimo)
+    return minimo;
+  else if (velocity > 127)
+    return 127;
+  else
+    return velocity;
+  
+}
+
+/*
 int calculateVelocity(int value, int pin) {
   // Exponencial
   int minimo = 80;
