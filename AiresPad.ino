@@ -19,19 +19,33 @@ int padSMin = 70;
 int padSMax = 70;
 int padG = 1.5;
 
-char pinAssignments[13] ={'A0','A1','A2','A3','A4','A5','A6','A7','A8','A9', 'A10', 'A11', 'A12'};
-byte padNote[13] =       { 4,   49 , 53 , 51 , 48 , 43 ,  1 , 37 , 38 , 18 ,  36  ,   5  ,    6 }; // MIDI notes from 0 to 127 (Mid C = 60)
-bool padActive[13] =     {true, true, true, true, true, true, true, true, true, true, true, true, true};
-bool hihat[13] =         {true, false, false, false, false, false, false, false, false, false, false, false, false};
-int threshold[13] =      {10, padSMin, padSMin, padSMin, padSMin, padSMin, padSMin, padSMax, 40, padSMax, 60, 20, 20}; // Minimum value to get trigger
-float gain[13] =      {1.0, padG, padG, padG, padG, 1.5, padG, 1.5, 1.2, padG, 1.2, 2.0, 2.0}; // multiplier to apply in the analog pin values
-int maskTime[13] =      {15, 20, 20, 20, 20, 20, 20, 20, 20, 20, 50, 20, 10}; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
-int scanTime =          10; // Time hearing the pad to decide the correct value
-float retrigger =       0.7; // New trigger only value is greater than <<retrigger>> * last value
-//int maskTime =          30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
-long crossTalk =         8; // Number of milliseconds where cannot have more than one trigger. Highest first
-double crosstalkRatio = 3.2; // Less than crosstalkRatio * threshold will be removed 
-//float gain =            1.0; // multiplier to apply in the analog pin values
+// A0:  Hi-Hat Pedal
+// A1:  Crash Cymbal
+// A2:  Ride Bell
+// A3:  Ride Cymbal
+// A4:  High Tom
+// A5:  Floor Tom
+// A6:  Extra Crash
+// A7:  Snare Ring
+// A8:  Snare
+// A9:  Hi-Hat
+// A10: Kick Drums
+// A11: Extra
+// A12: Extra
+
+char pinAssignments[13] ={'A0'   ,'A1'    ,'A2'    ,'A3'    ,'A4'    ,'A5'    ,'A6'    ,'A7'    ,'A8'    ,'A9'    , 'A10'  , 'A11'  , 'A12'  };
+byte padNote[13] =       { 4     ,   49   , 53     , 51     , 48     , 43     ,  1     , 37     , 38     , 18     ,  36    ,   5    ,    6   }; // MIDI notes from 0 to 127 (Mid C = 60)
+bool padActive[13] =     {true   , true   , true   , true   , true   , true   , true   , true   , true   , true   , true   , true   , true   };
+bool hihat[13] =         {true   , false  , false  , false  , false  , false  , false  , false  , false  , false  , false  , false  , false  };
+int threshold[13] =      {10     , 50     , 50     , 50     , padSMin, padSMin, padSMin, padSMax, 60     , padSMax, 60     , 20     , 20     }; // Minimum value to get trigger
+float gain[13] =         {1.0    , padG   , padG   , padG   , padG   , 1.5    , padG   , 1.0    , padG   , padG   , 1.2    , 2.0    , 2.0    }; // multiplier to apply in the analog pin values
+int maskTime[13] =       {15     , 20     , 20     , 20     , 20     , 20     , 20     , 25     , 20     , 20     , 50     , 20     , 10     }; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+int scanTime =           10; // Time hearing the pad to decide the correct value
+float retrigger =        0.8; // New trigger only value is greater than <<retrigger>> * last value
+//int maskTime =         30; // Minimum number of cycles to a new trigger. It should to be bigger than the others attributes.
+long crossTalk =         12; // Number of milliseconds where cannot have more than one trigger. Highest first
+double crosstalkRatio =  3.2; // Less than crosstalkRatio * threshold will be removed 
+//float gain =           1.0; // multiplier to apply in the analog pin values
 
 int numberOfPads = 13;
 int sizeOfCache = 16;
@@ -45,17 +59,17 @@ long startMillis[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 bool triggered[13] = {false, false, false, false, false, false, false, false, false, false, false, false, false};
 
 int padNeighbours[10][10] = {
-  // A0     A1     A2     A3    A4     A5      A6     A7     A8    A9
+  //  A0     A1     A2     A3     A4     A5     A6     A7     A8     A9
   { false, false, false, false, false, false, false, false, false, false },  // A0
-  { false, true,  true,  false, true,  true,  false, false, false, false },  // A1
-  { false, true,  true,  true,  true,  true,  true,  false, false, false },  // A2
-  { false, false, true,  true,  false, true,  true,  false, false, false },  // A3
-  { false, true,  true,  false, true,  true,  false, true,  true,  false },  // A4
-  { false, true,  true,  true,  true,  true,  true,  true,  true,  true  },  // A5
-  { false, false, true,  true,  false, true,  true,  false, true,  true  },  // A6
-  { false, false, false, false, true,  true,  false, true,  true,  false },  // A7
-  { false, false, false, false, true,  true,  true,  true,  true,  true  },  // A8
-  { false, false, false, false, false, true,  true,  true,  true,  true  }   // A9
+  { false, true , true , false, true , true , false, false, false, false },  // A1
+  { false, true , true , true , true , true , true , false, false, false },  // A2
+  { false, false, true , true , false, true , true , false, false, false },  // A3
+  { false, true , true , false, true , true , false, true , true , false },  // A4
+  { false, true , true , true , true , true , true , true , true , true  },  // A5
+  { false, false, true , true , false, true , true , false, true , true  },  // A6
+  { false, false, false, false, true , true , false, true , true , false },  // A7
+  { true , true , true , true , true , true , true , true , true , true  },  // A8
+  { false, false, false, false, false, true , true , true , true , true  }   // A9
 };
 
 byte status1;
